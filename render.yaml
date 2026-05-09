@@ -1,8 +1,0 @@
-services:
-  - type: web
-    name: tradeguard
-    runtime: python
-    plan: free
-    buildCommand: pip install -r backend/requirements.txt
-    startCommand: python -m uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port $PORT
-    healthCheckPath: /health
