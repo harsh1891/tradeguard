@@ -489,6 +489,14 @@
           <div class="metric"><span>Trades</span><strong id="tradeCount">0</strong></div>
           <div class="metric"><span>Cancels</span><strong id="cancels">0</strong></div>
           <button class="primary" id="toggle">Start Simulation</button>
+
+<button
+  class="danger"
+  id="reset"
+  style="background:#374151;"
+>
+  Reset Data
+</button>
         </div>
       </header>
 
@@ -551,186 +559,338 @@
     </main>
 
     <script>
-      const apiBase = window.location.origin;
-      const wsBase = apiBase.replace("http", "ws");
-      const state = {
-        running: false,
-        trades: [],
-        alerts: [],
-        prices: [],
-      };
+  const apiBase = window.location.origin;
+  const wsBase = apiBase.replace("http", "ws");
 
-      const fmt = (value) => Number(value || 0).toLocaleString();
+  const state = {
+    running: false,
+    trades: [],
+    alerts: [],
+    prices: [],
+  };
 
-      async function loadInitialState() {
-        const health = await fetch(`${apiBase}/health`).then((res) => res.json());
-        state.running = health.running;
-        updateButton();
-        const orderbook = await fetch(`${apiBase}/orderbook`).then((res) => res.json());
-        renderOrderBook(orderbook);
-        const metrics = await fetch(`${apiBase}/metrics`).then((res) => res.json());
-        renderMetrics(metrics);
-        const alerts = await fetch(`${apiBase}/alerts`).then((res) => res.json());
-        state.alerts = alerts.slice(0, 20);
-        renderAlerts();
-        setStatus("Connected to TradeGuard API", true);
-      }
+  const fmt = (value) => Number(value || 0).toLocaleString();
 
-      function setStatus(text, live) {
-        document.getElementById("status").textContent = text;
-        document.getElementById("statusDot").className = live ? "dot live" : "dot";
-      }
+  async function loadInitialState() {
+    const health = await fetch(`${apiBase}/health`).then((res) => res.json());
 
-      function connect(channel, handler) {
-        const socket = new WebSocket(`${wsBase}/ws/${channel}`);
-        socket.addEventListener("open", () => socket.send("subscribe"));
-        socket.addEventListener("message", (event) => handler(JSON.parse(event.data)));
-        socket.addEventListener("close", () => {
-          setStatus(`Reconnecting ${channel} stream...`, false);
-          setTimeout(() => connect(channel, handler), 1000);
-        });
-      }
+    state.running = health.running;
 
-      async function toggleSimulation() {
-        const action = state.running ? "stop" : "start";
-        const response = await fetch(`${apiBase}/simulation/${action}`, { method: "POST" });
-        const body = await response.json();
-        state.running = body.running;
-        updateButton();
-      }
+    updateButton();
 
-      async function runBenchmark() {
-        const button = document.getElementById("runBenchmark");
-        button.textContent = "Running...";
-        button.disabled = true;
-        try {
-          const result = await fetch(`${apiBase}/benchmark?events=25000`, { method: "POST" }).then((res) => res.json());
-          if (result.detail) throw new Error(result.detail);
-          document.getElementById("benchEvents").textContent = fmt(result.events_processed);
-          document.getElementById("benchThroughput").textContent = `${fmt(Math.round(result.events_per_second))}/sec`;
-          document.getElementById("benchLatency").textContent = `${result.avg_detection_latency_ms} ms`;
-          document.getElementById("benchPrecision").textContent = `${Math.round(result.labelled_precision * 100)}%`;
-        } catch (error) {
-          document.getElementById("benchEvents").textContent = "Restart";
-          document.getElementById("benchThroughput").textContent = "server";
-          document.getElementById("benchLatency").textContent = "-";
-          document.getElementById("benchPrecision").textContent = "-";
-        } finally {
-          button.textContent = "Run 25K Event Test";
-          button.disabled = false;
-        }
-      }
+    const orderbook = await fetch(`${apiBase}/orderbook`).then((res) => res.json());
+    renderOrderBook(orderbook);
 
-      function updateButton() {
-        const button = document.getElementById("toggle");
-        button.textContent = state.running ? "Stop Simulation" : "Start Simulation";
-        button.className = state.running ? "danger" : "primary";
-      }
+    const metrics = await fetch(`${apiBase}/metrics`).then((res) => res.json());
+    renderMetrics(metrics);
 
-      function renderOrderBook(book) {
-        document.getElementById("symbol").textContent = book.symbol || "TGD-USD";
-        document.getElementById("symbolMini").textContent = book.symbol || "TGD-USD";
-        document.getElementById("mid").textContent = Number(book.mid_price || 0).toFixed(2);
-        renderLevels("bids", book.bids || [], "bid");
-        renderLevels("asks", book.asks || [], "ask");
-      }
+    const alerts = await fetch(`${apiBase}/alerts`).then((res) => res.json());
 
-      function renderLevels(id, levels, side) {
-        const maxQuantity = Math.max(...levels.map((level) => Number(level.quantity || 0)), 1);
-        document.getElementById(id).innerHTML = levels.slice(0, 10).map((level) => {
-          const depth = Math.max(8, Math.round((Number(level.quantity || 0) / maxQuantity) * 100));
-          return `
-            <div class="level ${side}" style="--depth:${depth}%">
-              <span>${Number(level.price).toFixed(2)}</span>
-              <strong>${fmt(level.quantity)}</strong>
-              <small>${level.orders}</small>
-            </div>
-          `;
-        }).join("");
-      }
+    state.alerts = alerts.slice(0, 20);
 
-      function renderTrade(trade) {
-        state.trades = [trade, ...state.trades].slice(0, 18);
-        state.prices = [...state.prices, Number(trade.price)].slice(-48);
-        document.getElementById("trades").innerHTML = state.trades.map((item) => `
-          <div class="row">
-            <span>${item.buyer_id}</span>
-            <strong>${Number(item.price).toFixed(2)}</strong>
-            <span>${fmt(item.quantity)}</span>
+    renderAlerts();
+
+    setStatus("Connected to TradeGuard API", true);
+  }
+
+  function setStatus(text, live) {
+    document.getElementById("status").textContent = text;
+    document.getElementById("statusDot").className = live ? "dot live" : "dot";
+  }
+
+  function connect(channel, handler) {
+    const socket = new WebSocket(`${wsBase}/ws/${channel}`);
+
+    socket.addEventListener("open", () => socket.send("subscribe"));
+
+    socket.addEventListener("message", (event) => {
+      handler(JSON.parse(event.data));
+    });
+
+    socket.addEventListener("close", () => {
+      setStatus(`Reconnecting ${channel} stream...`, false);
+
+      setTimeout(() => connect(channel, handler), 1000);
+    });
+  }
+
+  async function toggleSimulation() {
+    const action = state.running ? "stop" : "start";
+
+    const response = await fetch(`${apiBase}/simulation/${action}`, {
+      method: "POST",
+    });
+
+    const body = await response.json();
+
+    state.running = body.running;
+
+    updateButton();
+  }
+
+  async function resetSimulation() {
+    await fetch(`${apiBase}/simulation/reset`, {
+      method: "POST",
+    });
+
+    state.trades = [];
+    state.alerts = [];
+    state.prices = [];
+
+    document.getElementById("orders").textContent = "0";
+    document.getElementById("tradeCount").textContent = "0";
+    document.getElementById("cancels").textContent = "0";
+
+    document.getElementById("trades").innerHTML =
+      '<div class="empty">No trades yet</div>';
+
+    document.getElementById("alerts").innerHTML =
+      '<div class="empty">No alerts yet</div>';
+
+    document.getElementById("traders").innerHTML =
+      '<div class="empty">No metrics yet</div>';
+
+    document.getElementById("chart").innerHTML =
+      '<div class="empty">Waiting for trades</div>';
+  }
+
+  async function runBenchmark() {
+    const button = document.getElementById("runBenchmark");
+
+    button.textContent = "Running...";
+    button.disabled = true;
+
+    try {
+      const result = await fetch(`${apiBase}/benchmark?events=25000`, {
+        method: "POST",
+      }).then((res) => res.json());
+
+      if (result.detail) throw new Error(result.detail);
+
+      document.getElementById("benchEvents").textContent =
+        fmt(result.events_processed);
+
+      document.getElementById("benchThroughput").textContent =
+        `${fmt(Math.round(result.events_per_second))}/sec`;
+
+      document.getElementById("benchLatency").textContent =
+        `${result.avg_detection_latency_ms} ms`;
+
+      document.getElementById("benchPrecision").textContent =
+        `${Math.round(result.labelled_precision * 100)}%`;
+
+    } catch (error) {
+      document.getElementById("benchEvents").textContent = "Restart";
+      document.getElementById("benchThroughput").textContent = "server";
+      document.getElementById("benchLatency").textContent = "-";
+      document.getElementById("benchPrecision").textContent = "-";
+    } finally {
+      button.textContent = "Run 25K Event Test";
+      button.disabled = false;
+    }
+  }
+
+  function updateButton() {
+    const button = document.getElementById("toggle");
+
+    button.textContent = state.running
+      ? "Stop Simulation"
+      : "Start Simulation";
+
+    button.className = state.running
+      ? "danger"
+      : "primary";
+  }
+
+  function renderOrderBook(book) {
+    document.getElementById("symbol").textContent =
+      book.symbol || "TGD-USD";
+
+    document.getElementById("symbolMini").textContent =
+      book.symbol || "TGD-USD";
+
+    document.getElementById("mid").textContent =
+      Number(book.mid_price || 0).toFixed(2);
+
+    renderLevels("bids", book.bids || [], "bid");
+    renderLevels("asks", book.asks || [], "ask");
+  }
+
+  function renderLevels(id, levels, side) {
+    const maxQuantity = Math.max(
+      ...levels.map((level) => Number(level.quantity || 0)),
+      1
+    );
+
+    document.getElementById(id).innerHTML =
+      levels.slice(0, 10).map((level) => {
+        const depth = Math.max(
+          8,
+          Math.round((Number(level.quantity || 0) / maxQuantity) * 100)
+        );
+
+        return `
+          <div class="level ${side}" style="--depth:${depth}%">
+            <span>${Number(level.price).toFixed(2)}</span>
+            <strong>${fmt(level.quantity)}</strong>
+            <small>${level.orders}</small>
           </div>
-        `).join("");
-        renderChart();
-      }
+        `;
+      }).join("");
+  }
 
-      function renderChart() {
-        const prices = state.prices;
-        if (!prices.length) {
-          document.getElementById("chart").innerHTML = '<div class="empty">Waiting for trades</div>';
-          return;
-        }
-        const min = Math.min(...prices);
-        const max = Math.max(...prices);
-        const range = Math.max(max - min, 0.01);
-        document.getElementById("chart").innerHTML = prices.map((price) => {
-          const height = 12 + ((price - min) / range) * 205;
-          const color = price >= prices[0] ? "var(--green)" : "var(--blue)";
-          return `<div class="bar" title="${price.toFixed(2)}" style="height:${height}px;background:${color}"></div>`;
-        }).join("");
-      }
+  function renderTrade(trade) {
+    state.trades = [trade, ...state.trades].slice(0, 18);
 
-      function renderAlert(alert) {
-        state.alerts = [alert, ...state.alerts].slice(0, 20);
-        renderAlerts();
-      }
+    state.prices =
+      [...state.prices, Number(trade.price)].slice(-48);
 
-      function renderAlerts() {
-        if (!state.alerts.length) {
-          document.getElementById("alerts").innerHTML = '<div class="empty">No alerts yet</div>';
-          return;
-        }
-        document.getElementById("alerts").innerHTML = state.alerts.map((alert) => {
-          const severity = String(alert.severity).toLowerCase();
-          return `
-            <article class="alert ${severity}">
-              <header>
-                <strong>${String(alert.alert_type).replaceAll("_", " ")}</strong>
-                <span class="badge ${severity}">${alert.severity}</span>
-              </header>
-              <div class="alert-meta">${alert.trader_id} | score ${Math.round(alert.score)}</div>
-              <p>${alert.reason}</p>
-            </article>
-          `;
-        }).join("");
-      }
+    document.getElementById("trades").innerHTML =
+      state.trades.map((item) => `
+        <div class="row">
+          <span>${item.buyer_id}</span>
+          <strong>${Number(item.price).toFixed(2)}</strong>
+          <span>${fmt(item.quantity)}</span>
+        </div>
+      `).join("");
 
-      function renderMetrics(metrics) {
-        document.getElementById("orders").textContent = fmt(metrics.total_orders);
-        document.getElementById("tradeCount").textContent = fmt(metrics.total_trades);
-        document.getElementById("cancels").textContent = fmt(metrics.total_cancels);
-        const traders = metrics.traders || [];
-        document.getElementById("traders").innerHTML = traders.length ? traders.map((trader) => {
-          const risk = Math.round(trader.cancel_ratio * 100);
-          const riskClass = risk >= 70 ? "riskbar high" : "riskbar";
-          return `
-            <div class="row">
-              <span>${trader.trader_id}</span>
-              <strong>${risk}%</strong>
-              <span>${trader.cancels}/${trader.orders}</span>
+    renderChart();
+  }
+
+  function renderChart() {
+    const prices = state.prices;
+
+    if (!prices.length) {
+      document.getElementById("chart").innerHTML =
+        '<div class="empty">Waiting for trades</div>';
+
+      return;
+    }
+
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+
+    const range = Math.max(max - min, 0.01);
+
+    document.getElementById("chart").innerHTML =
+      prices.map((price) => {
+        const height =
+          12 + ((price - min) / range) * 205;
+
+        const color =
+          price >= prices[0]
+            ? "var(--green)"
+            : "var(--blue)";
+
+        return `
+          <div
+            class="bar"
+            title="${price.toFixed(2)}"
+            style="height:${height}px;background:${color}">
+          </div>
+        `;
+      }).join("");
+  }
+
+  function renderAlert(alert) {
+    state.alerts = [alert, ...state.alerts].slice(0, 20);
+
+    renderAlerts();
+  }
+
+  function renderAlerts() {
+    if (!state.alerts.length) {
+      document.getElementById("alerts").innerHTML =
+        '<div class="empty">No alerts yet</div>';
+
+      return;
+    }
+
+    document.getElementById("alerts").innerHTML =
+      state.alerts.map((alert) => {
+        const severity =
+          String(alert.severity).toLowerCase();
+
+        return `
+          <article class="alert ${severity}">
+            <header>
+              <strong>
+                ${String(alert.alert_type).replaceAll("_", " ")}
+              </strong>
+
+              <span class="badge ${severity}">
+                ${alert.severity}
+              </span>
+            </header>
+
+            <div class="alert-meta">
+              ${alert.trader_id} | score ${Math.round(alert.score)}
             </div>
-            <div class="${riskClass}"><div style="width:${Math.min(risk, 100)}%"></div></div>
-          `;
-        }).join("") : '<div class="empty">No metrics yet</div>';
-      }
 
-      document.getElementById("toggle").addEventListener("click", toggleSimulation);
-      document.getElementById("runBenchmark").addEventListener("click", runBenchmark);
-      loadInitialState().catch(() => {
-        setStatus("Could not connect to backend", false);
-      });
-      connect("orderbook", renderOrderBook);
-      connect("trades", renderTrade);
-      connect("alerts", renderAlert);
-      connect("metrics", renderMetrics);
-    </script>
+            <p>${alert.reason}</p>
+          </article>
+        `;
+      }).join("");
+  }
+
+  function renderMetrics(metrics) {
+    document.getElementById("orders").textContent =
+      fmt(metrics.total_orders);
+
+    document.getElementById("tradeCount").textContent =
+      fmt(metrics.total_trades);
+
+    document.getElementById("cancels").textContent =
+      fmt(metrics.total_cancels);
+
+    const traders = metrics.traders || [];
+
+    document.getElementById("traders").innerHTML =
+      traders.length
+        ? traders.map((trader) => {
+            const risk =
+              Math.round(trader.cancel_ratio * 100);
+
+            const riskClass =
+              risk >= 70
+                ? "riskbar high"
+                : "riskbar";
+
+            return `
+              <div class="row">
+                <span>${trader.trader_id}</span>
+                <strong>${risk}%</strong>
+                <span>${trader.cancels}/${trader.orders}</span>
+              </div>
+
+              <div class="${riskClass}">
+                <div style="width:${Math.min(risk, 100)}%"></div>
+              </div>
+            `;
+          }).join("")
+        : '<div class="empty">No metrics yet</div>';
+  }
+
+  document
+    .getElementById("toggle")
+    .addEventListener("click", toggleSimulation);
+
+  document
+    .getElementById("reset")
+    .addEventListener("click", resetSimulation);
+
+  document
+    .getElementById("runBenchmark")
+    .addEventListener("click", runBenchmark);
+
+  loadInitialState().catch(() => {
+    setStatus("Could not connect to backend", false);
+  });
+
+  connect("orderbook", renderOrderBook);
+  connect("trades", renderTrade);
+  connect("alerts", renderAlert);
+  connect("metrics", renderMetrics);
+</script>
   </body>
 </html>
