@@ -154,15 +154,3 @@ Example resume wording after running the benchmark:
 Benchmarked TradeGuard on 1M+ synthetic order-book events, measuring event throughput, detection latency, alert distribution, and labelled precision across spoofing, wash trading, quote stuffing, and abnormal cancellation scenarios.
 ```
 
-## Next Milestones
-
-1. Persist events and alerts to SQLite.
-2. Add historical replay with speed controls.
-3. Add tests for matching and detection rules.
-4. Move the matching engine into C++ and expose it with pybind11.
-5. Add ML anomaly scoring on top of the rule engine.
-6. Dockerize backend and frontend.
-
-## Resume Bullet
-
-Built TradeGuard, a real-time market surveillance platform that simulates exchange order flow and detects spoofing, wash trading, quote stuffing, fake liquidity walls, and abnormal cancellation behavior using FastAPI, WebSockets, React, and rule-based streaming analytics.
