@@ -67,24 +67,22 @@ async def stop_simulation() -> dict:
 @app.post("/simulation/reset")
 async def reset_simulation() -> dict:
 
-    # stop simulation first
+    global runner
+
+    # stop current simulation
     await runner.stop()
 
-    # clear trades
-    runner.engine.trades.clear()
+    # completely recreate runner
+    runner = SimulationRunner()
 
-    # clear alerts
-    runner.alerts.clear()
+    # reconnect callbacks
+    runner.on_event = broadcast_event
+    runner.on_alert = broadcast_alert
 
-    # recreate engine
-    runner.engine.bids.clear()
-    runner.engine.asks.clear()
-
-    # reset detector metrics if exists
-    if hasattr(runner.detector, "stats"):
-        runner.detector.stats.clear()
-
-    return {"status": "reset complete"}
+    return {
+        "status": "reset complete",
+        "running": False
+    }
 
 
 @app.get("/orderbook")
