@@ -1,0 +1,22 @@
+{
+  "events_processed": 10000,
+  "orders": 6756,
+  "trades": 277,
+  "cancellations": 2967,
+  "alerts": 7,
+  "alert_breakdown": {
+    "LIQUIDITY_WALL": 2,
+    "SPOOFING": 1,
+    "ABNORMAL_CANCEL_RATE": 2,
+    "QUOTE_STUFFING": 1,
+    "WASH_TRADE": 1
+  },
+  "runtime_seconds": 4.6089,
+  "events_per_second": 2169.71,
+  "avg_detection_latency_ms": 0.442761,
+  "max_detection_latency_ms": 22.6623,
+  "labelled_precision": 1.0,
+  "labelled_recall_proxy": 1.0,
+  "true_positive_alerts": 7,
+  "false_positive_alerts": 0
+}

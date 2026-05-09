@@ -1,0 +1,736 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TradeGuard Surveillance Console</title>
+    <style>
+      :root {
+        --bg: #f3f6f8;
+        --panel: #ffffff;
+        --panel-2: #f8fafb;
+        --line: #dce5eb;
+        --text: #14212b;
+        --muted: #667783;
+        --green: #087443;
+        --green-soft: #e7f5ee;
+        --red: #b42318;
+        --red-soft: #fff0ed;
+        --amber: #b77900;
+        --amber-soft: #fff7df;
+        --blue: #1662c4;
+        --blue-soft: #e8f1ff;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        margin: 0;
+      }
+
+      button {
+        border: 0;
+        cursor: pointer;
+        font: inherit;
+      }
+
+      .shell {
+        min-height: 100vh;
+        padding: 18px;
+      }
+
+      .topbar {
+        align-items: center;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: flex;
+        gap: 18px;
+        justify-content: space-between;
+        margin: 0 auto 14px;
+        max-width: 1500px;
+        padding: 14px;
+      }
+
+      .brand-row {
+        align-items: center;
+        display: flex;
+        gap: 12px;
+      }
+
+      .mark {
+        align-items: center;
+        background: var(--blue);
+        border-radius: 8px;
+        color: #fff;
+        display: flex;
+        font-weight: 900;
+        height: 42px;
+        justify-content: center;
+        width: 42px;
+      }
+
+      .brand {
+        font-size: 24px;
+        font-weight: 900;
+        line-height: 1;
+      }
+
+      .subtitle {
+        color: var(--muted);
+        font-size: 13px;
+        margin: 5px 0 0;
+      }
+
+      .status-pill {
+        align-items: center;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--muted);
+        display: inline-flex;
+        font-size: 12px;
+        font-weight: 750;
+        gap: 7px;
+        margin-top: 8px;
+        padding: 5px 10px;
+      }
+
+      .dot {
+        background: var(--amber);
+        border-radius: 999px;
+        height: 8px;
+        width: 8px;
+      }
+
+      .dot.live {
+        background: var(--green);
+      }
+
+      .toolbar {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: flex-end;
+      }
+
+      .metric {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        min-width: 112px;
+        padding: 10px 12px;
+      }
+
+      .metric span {
+        color: var(--muted);
+        display: block;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .metric strong {
+        display: block;
+        font-size: 22px;
+        margin-top: 2px;
+      }
+
+      .primary,
+      .danger {
+        border-radius: 8px;
+        color: #ffffff;
+        font-weight: 850;
+        height: 48px;
+        min-width: 150px;
+        padding: 0 18px;
+      }
+
+      .primary {
+        background: var(--blue);
+      }
+
+      .danger {
+        background: var(--red);
+      }
+
+      .summary {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(5, minmax(130px, 1fr));
+        margin: 0 auto 14px;
+        max-width: 1500px;
+      }
+
+      .tag {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: #344653;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-height: 64px;
+        padding: 10px 12px;
+      }
+
+      .tag strong {
+        font-size: 13px;
+      }
+
+      .tag span {
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 1.05fr 1.35fr 1.15fr;
+        margin: 0 auto;
+        max-width: 1500px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        min-height: 270px;
+        overflow: hidden;
+      }
+
+      .panel-head {
+        align-items: center;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        justify-content: space-between;
+        min-height: 48px;
+        padding: 0 14px;
+      }
+
+      .panel h2 {
+        color: #26343d;
+        font-size: 14px;
+        margin: 0;
+      }
+
+      .panel-body {
+        padding: 14px;
+      }
+
+      .mini {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 750;
+      }
+
+      .alerts {
+        grid-row: span 2;
+      }
+
+      .benchmark {
+        grid-column: span 2;
+        min-height: 220px;
+      }
+
+      .level,
+      .row {
+        align-items: center;
+        border-bottom: 1px solid #eef2f5;
+        display: grid;
+        gap: 8px;
+        grid-template-columns: 1fr 1fr 58px;
+        min-height: 31px;
+        position: relative;
+      }
+
+      .level::before {
+        bottom: 4px;
+        content: "";
+        opacity: 0.18;
+        position: absolute;
+        right: 0;
+        top: 4px;
+        width: var(--depth, 0%);
+      }
+
+      .level.bid::before {
+        background: var(--green);
+      }
+
+      .level.ask::before {
+        background: var(--red);
+      }
+
+      .level > *,
+      .row > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .level span,
+      .row span {
+        color: #5d6b75;
+        font-size: 13px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .level strong,
+      .row strong {
+        font-size: 13px;
+        text-align: right;
+      }
+
+      .level small {
+        color: #7c8993;
+        font-size: 12px;
+        text-align: right;
+      }
+
+      .book-title {
+        color: #63717c;
+        display: flex;
+        font-size: 11px;
+        font-weight: 850;
+        justify-content: space-between;
+        margin: 10px 0 6px;
+        text-transform: uppercase;
+      }
+
+      .bid strong {
+        color: var(--green);
+      }
+
+      .ask strong {
+        color: var(--red);
+      }
+
+      .mid {
+        align-items: center;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        margin: 12px 0;
+        padding: 10px 12px;
+      }
+
+      .mid span {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .mid strong {
+        color: #0f1720;
+        font-size: 24px;
+      }
+
+      .chart {
+        align-items: end;
+        background: linear-gradient(#f8fafb, #fff);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: flex;
+        gap: 3px;
+        height: 236px;
+        padding: 12px;
+      }
+
+      .bar {
+        background: var(--blue);
+        border-radius: 3px 3px 0 0;
+        flex: 1;
+        min-width: 3px;
+      }
+
+      .alert {
+        background: var(--amber-soft);
+        border: 1px solid #f1d58c;
+        border-left: 5px solid var(--amber);
+        border-radius: 8px;
+        margin-bottom: 10px;
+        padding: 10px;
+      }
+
+      .alert.high {
+        background: var(--red-soft);
+        border-color: #fac8c1;
+        border-left-color: var(--red);
+      }
+
+      .alert header {
+        align-items: center;
+        display: flex;
+        gap: 8px;
+        justify-content: space-between;
+      }
+
+      .alert strong {
+        font-size: 13px;
+      }
+
+      .badge {
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 11px;
+        font-weight: 900;
+        padding: 4px 8px;
+      }
+
+      .badge.high {
+        background: var(--red);
+        color: #fff;
+      }
+
+      .badge.medium {
+        background: var(--amber);
+        color: #fff;
+      }
+
+      .alert-meta,
+      .alert p {
+        color: #5f6c75;
+        font-size: 12px;
+      }
+
+      .alert p {
+        margin: 8px 0 0;
+      }
+
+      .riskbar {
+        background: #e7edf1;
+        border-radius: 999px;
+        height: 7px;
+        overflow: hidden;
+      }
+
+      .riskbar div {
+        background: var(--blue);
+        height: 100%;
+      }
+
+      .riskbar.high div {
+        background: var(--red);
+      }
+
+      .empty {
+        align-items: center;
+        color: #7a8790;
+        display: flex;
+        min-height: 160px;
+        justify-content: center;
+      }
+
+      .benchmark-grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(4, minmax(120px, 1fr));
+        margin-top: 12px;
+      }
+
+      .bench-note {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+        margin: 0 0 12px;
+      }
+
+      @media (max-width: 1040px) {
+        .topbar {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .toolbar {
+          justify-content: flex-start;
+        }
+
+        .grid,
+        .summary,
+        .benchmark-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .benchmark {
+          grid-column: auto;
+        }
+
+        .alerts {
+          grid-row: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <div class="brand-row">
+            <div class="mark">TG</div>
+            <div>
+              <div class="brand">TradeGuard</div>
+              <p class="subtitle">Real-time market surveillance and manipulation detection</p>
+            </div>
+          </div>
+          <div class="status-pill"><span class="dot" id="statusDot"></span><span id="status">Connecting to API...</span></div>
+        </div>
+        <div class="toolbar">
+          <div class="metric"><span>Orders</span><strong id="orders">0</strong></div>
+          <div class="metric"><span>Trades</span><strong id="tradeCount">0</strong></div>
+          <div class="metric"><span>Cancels</span><strong id="cancels">0</strong></div>
+          <button class="primary" id="toggle">Start Simulation</button>
+        </div>
+      </header>
+
+      <section class="summary">
+        <div class="tag"><strong>Spoofing</strong><span>large fake orders cancelled quickly</span></div>
+        <div class="tag"><strong>Wash Trading</strong><span>linked accounts creating fake volume</span></div>
+        <div class="tag"><strong>Quote Stuffing</strong><span>excessive order traffic bursts</span></div>
+        <div class="tag"><strong>Liquidity Walls</strong><span>oversized visible buy/sell pressure</span></div>
+        <div class="tag"><strong>Cancel Abuse</strong><span>abnormally high cancellation ratio</span></div>
+      </section>
+
+      <section class="grid">
+        <section class="panel">
+          <div class="panel-head"><h2>Live Order Book</h2><span class="mini" id="symbolMini">TGD-USD</span></div>
+          <div class="panel-body">
+            <div class="book-title"><span>Bids</span><span>Price / Size / Orders</span></div>
+            <div id="bids"></div>
+            <div class="mid"><span id="symbol">TGD-USD</span><strong id="mid">100.00</strong></div>
+            <div class="book-title"><span>Asks</span><span>Price / Size / Orders</span></div>
+            <div id="asks"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head"><h2>Price Flow</h2><span class="mini">recent trades</span></div>
+          <div class="panel-body">
+            <div class="chart" id="chart"><div class="empty">Waiting for trades</div></div>
+          </div>
+        </section>
+
+        <section class="panel alerts">
+          <div class="panel-head"><h2>Suspicious Alerts</h2><span class="mini">live evidence</span></div>
+          <div class="panel-body" id="alerts"><div class="empty">No alerts yet</div></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head"><h2>Trade Feed</h2><span class="mini">buyer / price / size</span></div>
+          <div class="panel-body" id="trades"><div class="empty">No trades yet</div></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head"><h2>Trader Risk</h2><span class="mini">cancel ratio</span></div>
+          <div class="panel-body" id="traders"><div class="empty">No metrics yet</div></div>
+        </section>
+
+        <section class="panel benchmark">
+          <div class="panel-head"><h2>High-Volume Benchmark</h2><span class="mini">synthetic labelled stream</span></div>
+          <div class="panel-body">
+            <p class="bench-note">Runs the same detection rules on a fast labelled event stream. This is for demo-scale throughput and latency measurement, while larger 100K/1M runs are available from the terminal.</p>
+            <button class="primary" id="runBenchmark">Run 25K Event Test</button>
+            <div class="benchmark-grid">
+              <div class="metric"><span>Events</span><strong id="benchEvents">-</strong></div>
+              <div class="metric"><span>Throughput</span><strong id="benchThroughput">-</strong></div>
+              <div class="metric"><span>Avg Latency</span><strong id="benchLatency">-</strong></div>
+              <div class="metric"><span>Labelled Precision</span><strong id="benchPrecision">-</strong></div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const apiBase = window.location.origin;
+      const wsBase = apiBase.replace("http", "ws");
+      const state = {
+        running: false,
+        trades: [],
+        alerts: [],
+        prices: [],
+      };
+
+      const fmt = (value) => Number(value || 0).toLocaleString();
+
+      async function loadInitialState() {
+        const health = await fetch(`${apiBase}/health`).then((res) => res.json());
+        state.running = health.running;
+        updateButton();
+        const orderbook = await fetch(`${apiBase}/orderbook`).then((res) => res.json());
+        renderOrderBook(orderbook);
+        const metrics = await fetch(`${apiBase}/metrics`).then((res) => res.json());
+        renderMetrics(metrics);
+        const alerts = await fetch(`${apiBase}/alerts`).then((res) => res.json());
+        state.alerts = alerts.slice(0, 20);
+        renderAlerts();
+        setStatus("Connected to TradeGuard API", true);
+      }
+
+      function setStatus(text, live) {
+        document.getElementById("status").textContent = text;
+        document.getElementById("statusDot").className = live ? "dot live" : "dot";
+      }
+
+      function connect(channel, handler) {
+        const socket = new WebSocket(`${wsBase}/ws/${channel}`);
+        socket.addEventListener("open", () => socket.send("subscribe"));
+        socket.addEventListener("message", (event) => handler(JSON.parse(event.data)));
+        socket.addEventListener("close", () => {
+          setStatus(`Reconnecting ${channel} stream...`, false);
+          setTimeout(() => connect(channel, handler), 1000);
+        });
+      }
+
+      async function toggleSimulation() {
+        const action = state.running ? "stop" : "start";
+        const response = await fetch(`${apiBase}/simulation/${action}`, { method: "POST" });
+        const body = await response.json();
+        state.running = body.running;
+        updateButton();
+      }
+
+      async function runBenchmark() {
+        const button = document.getElementById("runBenchmark");
+        button.textContent = "Running...";
+        button.disabled = true;
+        try {
+          const result = await fetch(`${apiBase}/benchmark?events=25000`, { method: "POST" }).then((res) => res.json());
+          if (result.detail) throw new Error(result.detail);
+          document.getElementById("benchEvents").textContent = fmt(result.events_processed);
+          document.getElementById("benchThroughput").textContent = `${fmt(Math.round(result.events_per_second))}/sec`;
+          document.getElementById("benchLatency").textContent = `${result.avg_detection_latency_ms} ms`;
+          document.getElementById("benchPrecision").textContent = `${Math.round(result.labelled_precision * 100)}%`;
+        } catch (error) {
+          document.getElementById("benchEvents").textContent = "Restart";
+          document.getElementById("benchThroughput").textContent = "server";
+          document.getElementById("benchLatency").textContent = "-";
+          document.getElementById("benchPrecision").textContent = "-";
+        } finally {
+          button.textContent = "Run 25K Event Test";
+          button.disabled = false;
+        }
+      }
+
+      function updateButton() {
+        const button = document.getElementById("toggle");
+        button.textContent = state.running ? "Stop Simulation" : "Start Simulation";
+        button.className = state.running ? "danger" : "primary";
+      }
+
+      function renderOrderBook(book) {
+        document.getElementById("symbol").textContent = book.symbol || "TGD-USD";
+        document.getElementById("symbolMini").textContent = book.symbol || "TGD-USD";
+        document.getElementById("mid").textContent = Number(book.mid_price || 0).toFixed(2);
+        renderLevels("bids", book.bids || [], "bid");
+        renderLevels("asks", book.asks || [], "ask");
+      }
+
+      function renderLevels(id, levels, side) {
+        const maxQuantity = Math.max(...levels.map((level) => Number(level.quantity || 0)), 1);
+        document.getElementById(id).innerHTML = levels.slice(0, 10).map((level) => {
+          const depth = Math.max(8, Math.round((Number(level.quantity || 0) / maxQuantity) * 100));
+          return `
+            <div class="level ${side}" style="--depth:${depth}%">
+              <span>${Number(level.price).toFixed(2)}</span>
+              <strong>${fmt(level.quantity)}</strong>
+              <small>${level.orders}</small>
+            </div>
+          `;
+        }).join("");
+      }
+
+      function renderTrade(trade) {
+        state.trades = [trade, ...state.trades].slice(0, 18);
+        state.prices = [...state.prices, Number(trade.price)].slice(-48);
+        document.getElementById("trades").innerHTML = state.trades.map((item) => `
+          <div class="row">
+            <span>${item.buyer_id}</span>
+            <strong>${Number(item.price).toFixed(2)}</strong>
+            <span>${fmt(item.quantity)}</span>
+          </div>
+        `).join("");
+        renderChart();
+      }
+
+      function renderChart() {
+        const prices = state.prices;
+        if (!prices.length) {
+          document.getElementById("chart").innerHTML = '<div class="empty">Waiting for trades</div>';
+          return;
+        }
+        const min = Math.min(...prices);
+        const max = Math.max(...prices);
+        const range = Math.max(max - min, 0.01);
+        document.getElementById("chart").innerHTML = prices.map((price) => {
+          const height = 12 + ((price - min) / range) * 205;
+          const color = price >= prices[0] ? "var(--green)" : "var(--blue)";
+          return `<div class="bar" title="${price.toFixed(2)}" style="height:${height}px;background:${color}"></div>`;
+        }).join("");
+      }
+
+      function renderAlert(alert) {
+        state.alerts = [alert, ...state.alerts].slice(0, 20);
+        renderAlerts();
+      }
+
+      function renderAlerts() {
+        if (!state.alerts.length) {
+          document.getElementById("alerts").innerHTML = '<div class="empty">No alerts yet</div>';
+          return;
+        }
+        document.getElementById("alerts").innerHTML = state.alerts.map((alert) => {
+          const severity = String(alert.severity).toLowerCase();
+          return `
+            <article class="alert ${severity}">
+              <header>
+                <strong>${String(alert.alert_type).replaceAll("_", " ")}</strong>
+                <span class="badge ${severity}">${alert.severity}</span>
+              </header>
+              <div class="alert-meta">${alert.trader_id} | score ${Math.round(alert.score)}</div>
+              <p>${alert.reason}</p>
+            </article>
+          `;
+        }).join("");
+      }
+
+      function renderMetrics(metrics) {
+        document.getElementById("orders").textContent = fmt(metrics.total_orders);
+        document.getElementById("tradeCount").textContent = fmt(metrics.total_trades);
+        document.getElementById("cancels").textContent = fmt(metrics.total_cancels);
+        const traders = metrics.traders || [];
+        document.getElementById("traders").innerHTML = traders.length ? traders.map((trader) => {
+          const risk = Math.round(trader.cancel_ratio * 100);
+          const riskClass = risk >= 70 ? "riskbar high" : "riskbar";
+          return `
+            <div class="row">
+              <span>${trader.trader_id}</span>
+              <strong>${risk}%</strong>
+              <span>${trader.cancels}/${trader.orders}</span>
+            </div>
+            <div class="${riskClass}"><div style="width:${Math.min(risk, 100)}%"></div></div>
+          `;
+        }).join("") : '<div class="empty">No metrics yet</div>';
+      }
+
+      document.getElementById("toggle").addEventListener("click", toggleSimulation);
+      document.getElementById("runBenchmark").addEventListener("click", runBenchmark);
+      loadInitialState().catch(() => {
+        setStatus("Could not connect to backend", false);
+      });
+      connect("orderbook", renderOrderBook);
+      connect("trades", renderTrade);
+      connect("alerts", renderAlert);
+      connect("metrics", renderMetrics);
+    </script>
+  </body>
+</html>
