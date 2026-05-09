@@ -12,13 +12,16 @@ from app.simulation.runner import SimulationRunner
 from scripts.benchmark import run_stream_benchmark
 
 app = FastAPI(title="TradeGuard API", version="0.1.0")
+
 runner = SimulationRunner()
+
 clients: dict[str, set[WebSocket]] = defaultdict(set)
+
 STATIC_DIR = Path(__file__).parent / "static"
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,7 +46,9 @@ async def root() -> RedirectResponse:
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard() -> HTMLResponse:
-    return HTMLResponse((STATIC_DIR / "dashboard.html").read_text(encoding="utf-8"))
+    return HTMLResponse(
+        (STATIC_DIR / "dashboard.html").read_text(encoding="utf-8")
+    )
 
 
 @app.post("/simulation/start")
@@ -58,6 +63,30 @@ async def stop_simulation() -> dict:
     return {"running": runner.running}
 
 
+# NEW RESET API
+@app.post("/simulation/reset")
+async def reset_simulation() -> dict:
+
+    # stop simulation first
+    await runner.stop()
+
+    # clear trades
+    runner.engine.trades.clear()
+
+    # clear alerts
+    runner.alerts.clear()
+
+    # recreate engine
+    runner.engine.bids.clear()
+    runner.engine.asks.clear()
+
+    # reset detector metrics if exists
+    if hasattr(runner.detector, "stats"):
+        runner.detector.stats.clear()
+
+    return {"status": "reset complete"}
+
+
 @app.get("/orderbook")
 async def orderbook() -> dict:
     return runner.engine.snapshot().model_dump(mode="json")
@@ -65,12 +94,18 @@ async def orderbook() -> dict:
 
 @app.get("/trades")
 async def trades() -> list[dict]:
-    return [trade.model_dump(mode="json") for trade in runner.engine.trades[-100:]]
+    return [
+        trade.model_dump(mode="json")
+        for trade in runner.engine.trades[-100:]
+    ]
 
 
 @app.get("/alerts")
 async def alerts() -> list[dict]:
-    return [alert.model_dump(mode="json") for alert in list(runner.alerts)]
+    return [
+        alert.model_dump(mode="json")
+        for alert in list(runner.alerts)
+    ]
 
 
 @app.get("/metrics")
@@ -85,37 +120,55 @@ async def benchmark(events: int = 25_000) -> dict:
 
 
 @app.websocket("/ws/{channel}")
-async def websocket_channel(websocket: WebSocket, channel: str) -> None:
+async def websocket_channel(
+    websocket: WebSocket,
+    channel: str,
+) -> None:
+
     await websocket.accept()
+
     clients[channel].add(websocket)
+
     try:
         while True:
             await websocket.receive_text()
+
     except WebSocketDisconnect:
         clients[channel].discard(websocket)
 
 
 async def broadcast_event(event: MarketEvent) -> None:
+
     channels = {
         EventType.ORDERBOOK_SNAPSHOT: "orderbook",
         EventType.TRADE_EXECUTED: "trades",
         EventType.METRICS: "metrics",
     }
+
     channel = channels.get(event.event_type)
+
     if channel:
         await _broadcast(channel, event.payload)
 
 
 async def broadcast_alert(alert: Alert) -> None:
-    await _broadcast("alerts", alert.model_dump(mode="json"))
+    await _broadcast(
+        "alerts",
+        alert.model_dump(mode="json"),
+    )
 
 
 async def _broadcast(channel: str, payload: dict) -> None:
+
     stale: list[WebSocket] = []
+
     for websocket in clients[channel]:
+
         try:
             await websocket.send_json(payload)
+
         except RuntimeError:
             stale.append(websocket)
+
     for websocket in stale:
         clients[channel].discard(websocket)
