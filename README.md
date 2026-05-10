@@ -84,7 +84,7 @@ TradeGuard is ready to deploy on Render. The included `render.yaml` installs bac
 After deployment, the live project URL can look like:
 
 ```text
-[https://tradeguard.onrender.com](https://tradeguard-1.onrender.com/dashboard)
+https://tradeguard-1.onrender.com/dashboard
 ```
 
 The root URL opens the dashboard automatically. See `DEPLOYMENT.md` for step-by-step deployment notes.
